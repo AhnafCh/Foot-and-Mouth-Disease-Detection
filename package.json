@@ -1,0 +1,13 @@
+{
+  "name": "fmd-detector-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/frontend",
+    "packages/backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/backend & npm run start --workspace=packages/frontend",
+    "build": "npm run build --workspaces"
+  }
+}
