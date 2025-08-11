@@ -358,16 +358,22 @@
         const resultsSection = document.getElementById('resultsSection');
         const status = document.getElementById('status');
 
-        // Load model on page load
-        loadModel();
+        // Wait for TensorFlow.js to load before loading model
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait for tf to be available
+            while (typeof tf === 'undefined') {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            loadModel();
+        });
 
         async function loadModel() {
             const possiblePaths = [
-                './model/model.json',
-                '/model/model.json',
-                'model/model.json',
                 './model.json',
-                '/model.json'
+                '/model.json',
+                'model.json',
+                './model/model.json',
+                '/model/model.json'
             ];
 
             for (let path of possiblePaths) {
