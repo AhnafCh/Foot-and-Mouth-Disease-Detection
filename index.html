@@ -347,7 +347,7 @@
 
     <script>
         let model = null;
-        const modelUrl = './model/model.json'; // Update this path to your model location
+        const modelUrl = './model/model.json'; // Points to your model folder
 
         // DOM elements
         const uploadSection = document.getElementById('uploadSection');
@@ -362,15 +362,31 @@
         loadModel();
 
         async function loadModel() {
-            try {
-                showStatus('Loading AI model...', 'loading');
-                model = await tf.loadGraphModel(modelUrl);
-                showStatus('Model loaded successfully!', 'success');
-                setTimeout(() => hideStatus(), 2000);
-            } catch (error) {
-                showStatus('Failed to load model. Using demo mode with random predictions.', 'error');
-                console.error('Model loading error:', error);
+            const possiblePaths = [
+                './model/model.json',
+                '/model/model.json',
+                'model/model.json',
+                './model.json',
+                '/model.json'
+            ];
+
+            for (let path of possiblePaths) {
+                try {
+                    showStatus(`Trying to load model from: ${path}`, 'loading');
+                    console.log(`Attempting to load model from: ${path}`);
+                    model = await tf.loadGraphModel(path);
+                    showStatus('Model loaded successfully!', 'success');
+                    console.log(`Model loaded successfully from: ${path}`);
+                    setTimeout(() => hideStatus(), 2000);
+                    return; // Success, exit function
+                } catch (error) {
+                    console.error(`Failed to load from ${path}:`, error.message);
+                }
             }
+            
+            // If we get here, all paths failed
+            showStatus('Failed to load model from all paths. Using demo mode.', 'error');
+            console.error('All model loading attempts failed. Check file deployment.');
         }
 
         // File upload handlers
