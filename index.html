@@ -347,7 +347,7 @@
 
     <script>
         let model = null;
-        const modelUrl = './model/model.json'; // Points to your model folder
+        const modelUrl = './model.json'; // Points to your model folder
 
         // DOM elements
         const uploadSection = document.getElementById('uploadSection');
@@ -369,11 +369,11 @@
 
         async function loadModel() {
             const possiblePaths = [
-                './model.json',
-                '/model.json',
-                'model.json',
-                './model/model.json',
-                '/model/model.json'
+                './model.json',          // Root level (your current structure)
+                '/model.json',           // Absolute root
+                'model.json',            // Relative root
+                './model/model.json',    // Legacy subfolder
+                '/model/model.json'      // Legacy absolute subfolder
             ];
 
             for (let path of possiblePaths) {
