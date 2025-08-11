@@ -207,7 +207,7 @@
 
         .confidence-fill {
             height: 100%;
-            background: linear-gradient(90deg, #00293c, #0284c7);
+            background: linear-gradient(90deg, #0ea5e9, #0284c7);
             border-radius: 4px;
             transition: width 0.8s ease;
         }
@@ -530,29 +530,46 @@
                 showStatus('Running classification...', 'loading');
                 classifyBtn.disabled = true;
 
-                // Prepare image tensor
+                // Prepare image tensor - ensure proper preprocessing
                 const imageTensor = tf.browser.fromPixels(previewImage)
                     .resizeNearestNeighbor([224, 224])
-                    .expandDims(0)
-                    .div(255.0);
+                    .toFloat()
+                    .div(tf.scalar(255.0))  // Normalize to [0,1]
+                    .expandDims(0);         // Add batch dimension
 
-                // Get Haralick features
+                // Get Haralick features and ensure proper format
                 const haralickFeatures = [
                     parseFloat(document.getElementById('contrast').textContent),
                     parseFloat(document.getElementById('correlation').textContent),
                     parseFloat(document.getElementById('energy').textContent),
                     parseFloat(document.getElementById('homogeneity').textContent)
                 ];
-                const haralickTensor = tf.tensor2d([haralickFeatures]);
+                
+                // Ensure no NaN values in Haralick features
+                const cleanHaralickFeatures = haralickFeatures.map(val => 
+                    isNaN(val) ? 0.0 : val
+                );
+                
+                const haralickTensor = tf.tensor2d([cleanHaralickFeatures], [1, 4]);
+
+                console.log('Image tensor shape:', imageTensor.shape);
+                console.log('Haralick tensor shape:', haralickTensor.shape);
+                console.log('Haralick values:', cleanHaralickFeatures);
 
                 let predictions;
                 if (model) {
                     // Real model prediction
-                    const modelPrediction = model.predict({
+                    const modelOutput = model.predict({
                         'image_input': imageTensor,
                         'haralick_input': haralickTensor
                     });
-                    predictions = await modelPrediction.data();
+                    
+                    // Get the actual prediction data
+                    predictions = await modelOutput.data();
+                    console.log('Raw predictions:', predictions);
+                    
+                    // Clean up the output tensor
+                    modelOutput.dispose();
                 } else {
                     // Demo mode with realistic-looking random predictions
                     const random1 = Math.random() * 0.8 + 0.1;
@@ -560,8 +577,15 @@
                     predictions = [random1, random2];
                 }
 
+                // Ensure predictions are valid numbers
+                const validPredictions = Array.from(predictions).map(val => 
+                    isNaN(val) || !isFinite(val) ? 0.5 : val
+                );
+
+                console.log('Final predictions:', validPredictions);
+
                 // Display results
-                displayResults(predictions);
+                displayResults(validPredictions);
                 
                 // Cleanup tensors
                 imageTensor.dispose();
