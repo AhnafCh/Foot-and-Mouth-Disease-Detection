@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Input Image Classification</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            border-color: #4f46e5;
+            background: #f1f5f9;
+        }
+
+        .upload-section.dragover {
+            border-color: #4f46e5;
+            background: #e0e7ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #64748b;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .preview-section {
+            display: none;
+            margin: 30px 0;
+        }
+
+        .preview-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .image-preview {
+            flex: 1;
+        }
+
+        .image-preview img {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .features-panel {
+            flex: 1;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .features-panel h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .feature-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .feature-item:last-child {
+            border-bottom: none;
+        }
+
+        .feature-name {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .feature-value {
+            color: #374151;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 15px;
+            border: 1px solid #0ea5e9;
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #bae6fd;
+        }
+
+        .prediction-item:last-child {
+            border-bottom: none;
+        }
+
+        .class-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0c4a6e;
+        }
+
+        .confidence {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #0369a1;
+        }
+
+        .confidence-bar {
+            height: 8px;
+            background: #bae6fd;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #0284c7);
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .status.loading {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .model-info {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4f46e5;
+        }
+
+        .model-info h3 {
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .model-info p {
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .tech-details {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .preview-container {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Multi-Input Image Classifier</h1>
+            <p>Advanced CNN + Haralick Texture Features</p>
+        </div>
+
+        <div class="content">
+            <div class="model-info">
+                <h3>Model Architecture</h3>
+                <p>This model combines deep learning CNN features with traditional Haralick texture descriptors for enhanced image classification. It processes 224×224 RGB images alongside 4 texture features: contrast, correlation, energy, and homogeneity.</p>
+            </div>
+
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📸</div>
+                <h3>Upload an Image</h3>
+                <p>Drag & drop an image here or click to browse</p>
+                <p style="margin-top: 10px; color: #64748b; font-size: 0.9rem;">Supported formats: JPG, PNG, WebP</p>
+                <input type="file" id="imageInput" class="file-input" accept="image/*">
+            </div>
+
+            <div id="status" class="status" style="display: none;"></div>
+
+            <div class="preview-section" id="previewSection">
+                <h3>Image Analysis</h3>
+                <div class="preview-container">
+                    <div class="image-preview">
+                        <img id="previewImage" alt="Preview">
+                    </div>
+                    <div class="features-panel">
+                        <h3>Haralick Texture Features</h3>
+                        <div class="feature-item">
+                            <span class="feature-name">Contrast</span>
+                            <span class="feature-value" id="contrast">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-name">Correlation</span>
+                            <span class="feature-value" id="correlation">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-name">Energy</span>
+                            <span class="feature-value" id="energy">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-name">Homogeneity</span>
+                            <span class="feature-value" id="homogeneity">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="classifyBtn" class="btn">🔍 Classify Image</button>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h3>Classification Results</h3>
+                <div id="predictionResults"></div>
+            </div>
+
+            <div class="tech-details">
+                <p>Powered by TensorFlow.js • Client-side inference • Privacy-friendly</p>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="hiddenCanvas" style="display: none;"></canvas>
+
+    <script>
+        let model = null;
+        const modelUrl = './model/model.json'; // Update this path to your model location
+
+        // DOM elements
+        const uploadSection = document.getElementById('uploadSection');
+        const imageInput = document.getElementById('imageInput');
+        const previewSection = document.getElementById('previewSection');
+        const previewImage = document.getElementById('previewImage');
+        const classifyBtn = document.getElementById('classifyBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const status = document.getElementById('status');
+
+        // Load model on page load
+        loadModel();
+
+        async function loadModel() {
+            try {
+                showStatus('Loading AI model...', 'loading');
+                model = await tf.loadGraphModel(modelUrl);
+                showStatus('Model loaded successfully!', 'success');
+                setTimeout(() => hideStatus(), 2000);
+            } catch (error) {
+                showStatus('Failed to load model. Using demo mode with random predictions.', 'error');
+                console.error('Model loading error:', error);
+            }
+        }
+
+        // File upload handlers
+        uploadSection.addEventListener('click', () => imageInput.click());
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImageUpload(files[0]);
+            }
+        });
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleImageUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleImageUpload(file) {
+            try {
+                showStatus('Processing image...', 'loading');
+                
+                // Display preview
+                const imageUrl = URL.createObjectURL(file);
+                previewImage.src = imageUrl;
+                previewSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+
+                // Extract Haralick features
+                const features = await extractHaralickFeatures(file);
+                displayHaralickFeatures(features);
+
+                showStatus('Image processed! Ready for classification.', 'success');
+                setTimeout(() => hideStatus(), 2000);
+            } catch (error) {
+                showStatus('Error processing image: ' + error.message, 'error');
+                console.error('Image processing error:', error);
+            }
+        }
+
+        async function extractHaralickFeatures(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('hiddenCanvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Resize to 224x224 for consistency
+                    canvas.width = 224;
+                    canvas.height = 224;
+                    ctx.drawImage(img, 0, 0, 224, 224);
+                    
+                    // Get image data and compute simplified Haralick features
+                    const imageData = ctx.getImageData(0, 0, 224, 224);
+                    const features = computeHaralickFeatures(imageData);
+                    resolve(features);
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function computeHaralickFeatures(imageData) {
+            // Simplified Haralick feature computation
+            // In production, you'd want a more robust implementation
+            const pixels = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            // Convert to grayscale and compute GLCM-based features
+            const gray = [];
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                gray.push(Math.round(0.299 * r + 0.587 * g + 0.114 * b));
+            }
+            
+            // Simplified texture measurements
+            let contrast = 0, correlation = 0, energy = 0, homogeneity = 0;
+            let count = 0;
+            
+            // Sample-based computation for performance
+            const step = 4;
+            for (let y = 0; y < height - 1; y += step) {
+                for (let x = 0; x < width - 1; x += step) {
+                    const idx1 = y * width + x;
+                    const idx2 = idx1 + 1;
+                    const idx3 = idx1 + width;
+                    
+                    if (idx3 < gray.length) {
+                        const p1 = gray[idx1] / 255;
+                        const p2 = gray[idx2] / 255;
+                        const p3 = gray[idx3] / 255;
+                        
+                        const diff1 = Math.abs(p1 - p2);
+                        const diff2 = Math.abs(p1 - p3);
+                        
+                        contrast += (diff1 * diff1 + diff2 * diff2) / 2;
+                        correlation += (p1 * p2 + p1 * p3) / 2;
+                        energy += (p1 * p1 + p2 * p2) / 2;
+                        homogeneity += (1 / (1 + diff1) + 1 / (1 + diff2)) / 2;
+                        count++;
+                    }
+                }
+            }
+            
+            if (count > 0) {
+                contrast /= count;
+                correlation /= count;
+                energy /= count;
+                homogeneity /= count;
+            }
+            
+            return [contrast, correlation, energy, homogeneity];
+        }
+
+        function displayHaralickFeatures(features) {
+            document.getElementById('contrast').textContent = features[0].toFixed(4);
+            document.getElementById('correlation').textContent = features[1].toFixed(4);
+            document.getElementById('energy').textContent = features[2].toFixed(4);
+            document.getElementById('homogeneity').textContent = features[3].toFixed(4);
+        }
+
+        classifyBtn.addEventListener('click', classifyImage);
+
+        async function classifyImage() {
+            try {
+                showStatus('Running classification...', 'loading');
+                classifyBtn.disabled = true;
+
+                // Prepare image tensor
+                const imageTensor = tf.browser.fromPixels(previewImage)
+                    .resizeNearestNeighbor([224, 224])
+                    .expandDims(0)
+                    .div(255.0);
+
+                // Get Haralick features
+                const haralickFeatures = [
+                    parseFloat(document.getElementById('contrast').textContent),
+                    parseFloat(document.getElementById('correlation').textContent),
+                    parseFloat(document.getElementById('energy').textContent),
+                    parseFloat(document.getElementById('homogeneity').textContent)
+                ];
+                const haralickTensor = tf.tensor2d([haralickFeatures]);
+
+                let predictions;
+                if (model) {
+                    // Real model prediction
+                    const modelPrediction = model.predict({
+                        'image_input': imageTensor,
+                        'haralick_input': haralickTensor
+                    });
+                    predictions = await modelPrediction.data();
+                } else {
+                    // Demo mode with realistic-looking random predictions
+                    const random1 = Math.random() * 0.8 + 0.1;
+                    const random2 = 1 - random1;
+                    predictions = [random1, random2];
+                }
+
+                // Display results
+                displayResults(predictions);
+                
+                // Cleanup tensors
+                imageTensor.dispose();
+                haralickTensor.dispose();
+                
+                showStatus('Classification complete!', 'success');
+                setTimeout(() => hideStatus(), 2000);
+            } catch (error) {
+                showStatus('Classification error: ' + error.message, 'error');
+                console.error('Classification error:', error);
+            } finally {
+                classifyBtn.disabled = false;
+            }
+        }
+
+        function displayResults(predictions) {
+            // Binary classification for health diagnosis
+            const classes = ['healthy', 'fmd'];
+            const resultsHtml = predictions.map((prob, index) => {
+                const percentage = (prob * 100).toFixed(1);
+                return `
+                    <div class="prediction-item">
+                        <div>
+                            <div class="class-name">${classes[index]}</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="confidence">${percentage}%</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('predictionResults').innerHTML = resultsHtml;
+            resultsSection.style.display = 'block';
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            status.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
